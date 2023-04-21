@@ -134,7 +134,7 @@ function swapin_transfer(token, amount, recipient)
   -- check that the recipient is a valid address
   _typecheck(recipient, 'address')
 
-  -- mint the tokens to the recipient
+  -- transfer the tokens to the recipient
   contract.call(token, "transfer", amount, recipient)
 
   -- emit the swapin event
