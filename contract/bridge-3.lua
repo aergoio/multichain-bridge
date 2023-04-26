@@ -8,6 +8,8 @@ state.var {
   _owner = state.value(),     -- address
   _paused = state.value(),    -- bool
   _tokens = state.map(),      -- address -> string
+  _last_swapout_id = state.value(), -- uint
+  _swapouts = state.map(),    -- uint -> {address, uint}
 }
 
 function constructor()
@@ -153,25 +155,49 @@ end
 
 --------------------------------------------------------------------------------
 
--- transfer tokens from this chain to other chain
--- tokens are burned on this chain and unlocked on the other chain
-local function swapout_burn(token, amount, from, to_chain, to_address)
+-- retrieve the id of the last swapout
+function get_last_swapout_id()
+  return _last_swapout_id:get()
+end
 
-  -- burn the tokens from the bridge
-  contract.call(token, "burn", amount)
-
-  -- emit the swapout event
-  contract.event("swapout_burn", token, amount, from, to_chain, to_address)
+-- retrieve details of a given swapout
+function get_swapout_info(swapout_id)
+  local swapout = _swapouts[tostring(swapout_id)]
+  assert(swapout ~= nil, "invalid swapout id")
+  return swapout
 end
 
 -- transfer tokens from this chain to other chain
--- tokens are locked on this chain and minted on the other chain
-local function swapout_transfer(token, amount, from, to_chain, to_address)
+local function swapout(type, token, amount, from, to_chain, to_address)
 
-  -- keep the transferred tokens on the bridge contract
+  -- generate a unique swapout id
+  local swapout_id = _last_swapout_id:get() or 0
+  swapout_id = swapout_id + 1
+  _last_swapout_id:set(swapout_id)
+
+  -- save the swapout
+  _swapouts[tostring(swapout_id)] = {
+    token = token,
+    amount = amount,
+    from = from,
+    to_chain = to_chain,
+    to_address = to_address,
+  }
+
+  if type == "burn" then
+    -- tokens are burned on this chain and unlocked on the other chain
+    -- burn the tokens from the bridge
+    contract.call(token, "burn", amount)
+  elseif type == "transfer" then
+    -- tokens are locked on this chain and minted on the other chain
+    -- keep the transferred tokens on the bridge contract
+  else
+    -- invalid swapout type
+    assert(false, "invalid swapout type")
+  end
 
   -- emit the swapout event
-  contract.event("swapout_transfer", token, amount, from, to_chain, to_address)
+  contract.event("swapout", type, swapout_id, token, amount, from, to_chain, to_address)
 end
 
 -- called when transferring tokens to this contract
@@ -188,11 +214,11 @@ function tokensReceived(operator, from, amount, to_chain, to_address)
   local token_source = _tokens[token]
   if token_source == "this_chain" then
     -- call the swapout_transfer function
-    swapout_transfer(token, amount, from, to_chain, to_address)
+    swapout("transfer", token, amount, from, to_chain, to_address)
 
   elseif token_source == "other_chain" then
     -- call the swapout_burn function
-    swapout_burn(token, amount, from, to_chain, to_address)
+    swapout("burn", token, amount, from, to_chain, to_address)
 
   else
     error("token not supported")
@@ -203,4 +229,4 @@ end
 -- register the exported functions
 abi.register(set_owner, pause, unpause, create_associated_token, add_source_token,
              swapin_mint, swapin_transfer, tokensReceived)
-abi.register_view(get_token_info)
+abi.register_view(get_token_info, get_last_swapout_id, get_swapout_info)
