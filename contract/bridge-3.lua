@@ -167,7 +167,8 @@ function get_swapout_info(swapout_id)
   return swapout
 end
 
--- transfer tokens from this chain to other chain
+-- register a swapout request
+-- used to transfer tokens from this chain to another chain
 local function swapout(type, token, amount, from, to_chain, to_address)
 
   -- generate a unique swapout id
@@ -175,7 +176,7 @@ local function swapout(type, token, amount, from, to_chain, to_address)
   swapout_id = swapout_id + 1
   _last_swapout_id:set(swapout_id)
 
-  -- save the swapout
+  -- save the swapout request
   _swapouts[tostring(swapout_id)] = {
     token = token,
     amount = amount,
@@ -200,7 +201,10 @@ local function swapout(type, token, amount, from, to_chain, to_address)
   contract.event("swapout", type, swapout_id, token, amount, from, to_chain, to_address)
 end
 
--- called when transferring tokens to this contract
+-- called when ARC1 tokens are transferred to this contract.
+-- anyone can transfer tokens to this contract.
+-- only tokens that are supported by this bridge can be transferred.
+-- currently there is no minimum or maximum amount of tokens that can be transferred.
 function tokensReceived(operator, from, amount, to_chain, to_address)
   _typecheck(from, 'address')
   _typecheck(amount, 'ubig')

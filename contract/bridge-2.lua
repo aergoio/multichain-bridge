@@ -184,7 +184,10 @@ function swapout_transfer(token, amount, recipient)
   contract.event("swapout_transfer", token, amount, recipient)
 end
 
--- called when transferring tokens to this contract
+-- called when ARC1 tokens are transferred to this contract.
+-- anyone can transfer tokens to this contract.
+-- only the bridge token is accepted.
+-- currently there is no minimum or maximum amount of tokens that can be transferred.
 function tokensReceived(operator, from, amount, to_chain, to_address)
   _typecheck(from, 'address')
   _typecheck(amount, 'ubig')
