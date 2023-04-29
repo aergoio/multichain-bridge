@@ -26,10 +26,10 @@ local function _typecheck(x, t)
   if (x and t == 'address') then
     assert(type(x) == 'string', "the address must be in string format")
     -- check address length
-    assert(#x == 52, string.format("invalid address length: %s (%s)", x, #x))
-    -- check character
-    local invalidChar = string.match(x, '[^123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]')
-    assert(invalidChar == nil, string.format("invalid address format: %s contains invalid char %s", x, invalidChar or 'nil'))
+    assert(#x == 52, string.format("invalid address length (%s): %s", #x, x))
+    -- check address checksum
+    local success = pcall(system.isContract, x)
+    assert(success, "invalid address: " .. x)
   elseif (x and t == 'ubig') then
     -- check unsigned bignum
     assert(bignum.isbignum(x), string.format("invalid type: %s != %s", type(x), t))
